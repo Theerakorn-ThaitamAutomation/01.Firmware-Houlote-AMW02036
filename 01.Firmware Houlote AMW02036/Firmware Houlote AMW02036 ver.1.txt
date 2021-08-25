@@ -1,0 +1,311 @@
+#include <Keypad.h>
+#include<LiquidCrystal.h>
+#include<EEPROM.h>
+//innitial global parameter
+LiquidCrystal lcd(9, 8, 7, 6, 5, 4);
+char password[4];//for start
+char password2[4];//for fail
+char pass[4], pass1[4], pass2[4];
+int i = 0; //for start
+int i2 = 0; //for fail
+int a = 0;
+/*int j = 0;*/
+int k = 0;
+int p = 0;
+int j2 = 0;
+char customKey = 0; //for start
+char customKey2 = 0; //for fail
+const byte ROWS = 4;
+const byte COLS = 4;
+char hexaKeys[ROWS][COLS] = {
+  {'1', '2', '3', 'A'},
+  {'4', '5', '6', 'B'},
+  {'7', '8', '9', 'C'},
+  {'*', '0', '#', 'D'}
+};
+byte rowPins[ROWS] = {A0, A1, A2, A3};
+byte colPins[COLS] = {A4, A5, 3, 2};
+Keypad customKeypad = Keypad(makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS);
+int Fuse = 13;// for fuse 
+int Relay = 12;// for ON/OFF solenoid 
+int SW = 11;// fro SW button
+/*int v12vstart = 10;//relay ch IN2*/
+int GrLED = 22;//relay ch IN3
+int ReLED = 24;//relay ch IN4
+int Buzzer = 26;//relay ch IN5
+
+//initial Pin I/O
+void setup() {
+  Serial.begin(9600);
+  lcd.begin(16, 2);
+  pinMode(Fuse, INPUT);//13
+  digitalWrite(Fuse, LOW);       // turn on pulldown resistors
+  pinMode(Relay, OUTPUT); //12
+  digitalWrite(Relay, LOW);       // turn on pulldown resistors
+  pinMode(SW, INPUT); //11
+  digitalWrite(SW, LOW);       // turn on pulldown resistors
+  /*pinMode(v12vstart, OUTPUT); //10*/
+  pinMode(GrLED, OUTPUT); //22
+  pinMode(ReLED, OUTPUT); //24
+  pinMode(Buzzer, OUTPUT); //26
+  digitalWrite(Buzzer, LOW);       // turn on pulldown resistors
+  lcd.print("AMW02036 Hualote");
+  Serial.print("AMW02036 Hualote");
+  lcd.setCursor(0, 1);
+  delay(2000);
+  lcd.print("Tester Locked");
+  Serial.print("Tester Locked");
+  delay(6000);
+  lcd.clear();
+  lcd.print("QC Password1:");
+  Serial.println("QC Password1:");
+  lcd.setCursor(0, 1);
+
+  for (int j = 0; j < 4; j++)
+    EEPROM.write(j, j + 49);
+  for (int j = 0; j < 4; j++)
+    pass[j] = EEPROM.read(j);
+
+  for (int j2 = 0; j2 < 4; j2++)
+    EEPROM.write(j2, j2 + 49);
+  for (int j2 = 0; j2 < 4; j2++)
+    pass2[j2] = EEPROM.read(j2);
+
+  while (i != 4) {
+    //check password start
+    /*digitalWrite(v12vstart, LOW);
+    digitalWrite(Relay, LOW);*/
+    customKey = customKeypad.getKey();
+    if (customKey) {
+      password[i++] = customKey;
+      lcd.print(customKey);
+      Serial.print(customKey);
+    }
+  }
+  if (i == 4) {
+    delay(200);
+    for (int j = 0; j < 4; j++) {
+      pass[j] = EEPROM.read(j);
+    }
+    if (!(strncmp(password, pass, 4))) {
+      lcd.clear();
+      lcd.print("Enter password:");
+      Serial.println("Enter password:");
+      i = 0;
+    }
+
+    else {
+      while (k < 5) {
+        k = 0;
+        i = 0;
+        lcd.clear();
+        lcd.print("Password Wrong:");
+        Serial.println("Password Wrong:");
+        lcd.setCursor(0, 1);
+        while (i != 4) {
+          customKey = customKeypad.getKey();
+          if (customKey) {
+            password[i++] = customKey;
+            lcd.print(customKey);
+            Serial.print(customKey);
+          }
+        }
+        if (i == 4) {
+          delay(200);
+          for (int j = 0; j < 4; j++) {
+            pass[j] = EEPROM.read(j);
+          }
+          if (!(strncmp(password, pass, 4))) {
+            lcd.clear();
+            k = 6;
+            i = 0;
+          }
+        }
+      }
+    }
+  }
+}
+void loop() {
+  lcd.clear();
+  delay(100);
+   digitalWrite(ReLED, LOW);
+   digitalWrite(GrLED, LOW);
+   digitalWrite(Buzzer, LOW);
+  /*lcd.print("     Press");
+  Serial.println("   Press");
+  lcd.setCursor(0, 1);
+  lcd.print("  Start button");
+  Serial.println("  Start button");
+  while (digitalRead(SW) == HIGH);
+  while (digitalRead(SW) == LOW);*/
+  digitalWrite(Relay, HIGH);// set solenoind = on //pin 12
+  delay(1000);
+  lcd.clear();
+  lcd.print("  Insert PCB");
+  Serial.println("  Insert PCB");
+  lcd.setCursor(0, 1);
+  lcd.print("and press START");
+  Serial.println("and press START");
+  while (digitalRead(SW) == HIGH);// pin11 sw s3
+  while (digitalRead(SW) == LOW);// pin11 sw s3
+  delay(500);
+  /*digitalWrite(v12vstart, HIGH); // 12 v pcb =on*/
+  digitalWrite(Relay, LOW);// solenoid = off//pin 12
+  delay(500);
+
+  // check LED
+  lcd.clear();
+  lcd.print("Please Check LED"); //for check LED
+  lcd.setCursor(0, 1);
+  lcd.print("and press Start");
+  Serial.println("and press Start");
+  while (digitalRead(SW) == HIGH);// pin11 sw s3
+  while (digitalRead(SW) == LOW);// pin11 sw s3
+  delay(500);
+  lcd.clear();
+  lcd.print(" Checking FUSE  "); //for check fuse
+  Serial.println(" Checking FUSE ");
+  delay(5000);//for check fuse
+  
+  // check fuse for fail
+  if (digitalRead(Fuse) == HIGH) {
+    /*digitalWrite(GrLED, LOW);*/
+    digitalWrite(Buzzer, HIGH);
+    digitalWrite(Relay, LOW);
+    digitalWrite(ReLED, HIGH);
+    // this step must clos e SW s2 already
+    lcd.clear();
+    lcd.print("   Test FAIL ");
+    Serial.print("   Test FAIL ");
+    lcd.setCursor(0, 1);
+    delay(4000);
+    lcd.clear();
+    lcd.print("QC Password2:");
+    Serial.print("QC Password2:");
+    lcd.setCursor(0, 1);
+    delay(500);
+    i2 = 0;
+    j2 = 0;
+    p = 0;
+
+    while (i2 != 4) {
+      customKey2 = customKeypad.getKey();
+      if (customKey2) {
+        password2[i2++] = customKey2;
+        lcd.print(customKey2);
+        Serial.print(customKey2);
+      }
+    }
+
+    if (i2 == 4) {
+      delay(200);
+      for (int j2 = 0; j2 < 4; j2++) {
+        pass2[j2] = EEPROM.read(j2);
+      }
+      
+      if (!(strncmp(password2, pass2, 4))) {
+        digitalWrite(Buzzer, LOW);
+        digitalWrite(ReLED, LOW);
+        lcd.clear();
+        lcd.print("  QC Acception");
+        Serial.println("  QC Acception");
+        i2 = 0;
+        delay(2000);
+        /*digitalWrite(v12vstart, LOW);*/
+        digitalWrite(Relay, HIGH);// pin 12
+        lcd.clear();
+        lcd.print("Please Move PCB");
+        Serial.println("Please Move PCB");
+        /*lcd.setCursor(0, 1);
+        lcd.print("and press STOP");
+        Serial.println("and press STOP");
+        while (digitalRead(SW) == HIGH);
+        while (digitalRead(SW) == LOW);
+        delay(2000);
+        digitalWrite(Relay, LOW);*/
+        delay(3000);
+      }
+// test complease
+
+// if password wrong
+      else {
+        while (p < 5) {
+          p = 0;
+          i2 = 0;
+          lcd.clear();
+          lcd.print("Wrong Password:");
+          Serial.println("Wrong Password:");
+          lcd.setCursor(0, 1);
+
+          while (i2 != 4) {
+            customKey2 = customKeypad.getKey();
+
+            if (customKey2) {
+              password2[i2++] = customKey2;
+              lcd.print(customKey2);
+              Serial.print(customKey2);
+            }
+          }
+
+          if (i2 == 4) {
+            delay(200);
+
+            for (int j2 = 0; j2 < 4; j2++) {
+              pass2[j2] = EEPROM.read(j2);
+            }
+
+            if (!(strncmp(password2, pass2, 4))) {
+              digitalWrite(Buzzer, LOW);
+              digitalWrite(ReLED, LOW);
+              lcd.clear();
+              lcd.print("  QC Acception");
+              Serial.println("  QC Acception");
+              p = 6;
+              i2 = 0;
+              delay(2000);
+              /*digitalWrite(v12vstart, LOW);*/
+              digitalWrite(Relay, HIGH);
+              lcd.clear();
+              lcd.print("Please Move PCB");
+              Serial.println("Please Move PCB");
+              /*lcd.setCursor(0, 1);
+              lcd.print("and press STOP");
+              Serial.println("and press STOP");
+              while (digitalRead(SW) == HIGH);
+              while (digitalRead(SW) == LOW);*/
+              delay(3000);
+              /*digitalWrite(Relay, LOW);*/
+              // test complease
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /* if test passes*/
+  else {
+    digitalWrite(GrLED, HIGH);
+    lcd.clear();
+    lcd.print("   Test PASS ");
+    Serial.print("   Test PASS ");
+    delay(2000);
+    digitalWrite(Relay, HIGH); //set solenoid =ON pin 12
+    //digitalWrite(v12vstart, LOW);
+    // before this step must press close sw s2 12 v to pcb
+    delay(1000);
+    lcd.clear();
+    lcd.print("Please Move PCB");
+    Serial.println("Please Move PCB");
+    /*lcd.setCursor(0, 1);
+    lcd.print("and press STOP");
+    Serial.println("and press STOP");
+    while (digitalRead(SW) == HIGH);
+    while (digitalRead(SW) == LOW);
+    digitalWrite(GrLED, LOW);
+    delay(1000);
+    digitalWrite(Relay, LOW);*/
+    delay(1000);
+// test compleate by pass
+  }
+}
